@@ -29,7 +29,14 @@ st.markdown('<div class="titulo-negro">🏗️ APP DE INSPECCIÓN TÉCNICA DE IN
 # ── API Key en sidebar ────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("### ⚙️ Configuración")
-    api_key = st.text_input("API Key de Anthropic", type="password")
+    # Intentar leer desde Streamlit Secrets primero
+    api_key_secret = st.secrets.get("ANTHROPIC_API_KEY", "") if hasattr(st, "secrets") else ""
+    if api_key_secret:
+        api_key = api_key_secret
+        st.success("✅ API Key configurada")
+    else:
+        api_key = st.text_input("API Key de Anthropic", type="password",
+                                 help="O configúrala en Streamlit Secrets")
     st.markdown("---")
     st.markdown("### Tolerancias")
     st.markdown("""
