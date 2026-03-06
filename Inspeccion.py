@@ -162,13 +162,21 @@ El campo "accion" debe ser la solución técnica específica.
 El campo "resultado" debe indicar el propósito de la corrección.
 """})
 
-    response = client.messages.create(
-        model="claude-opus-4-5",
-        max_tokens=600,
-        messages=[{"role": "user", "content": content}]
-    )
-    texto = response.content[0].text.strip().replace("```json","").replace("```","").strip()
-    return json.loads(texto)
+    import time
+    for intento in range(3):
+        try:
+            response = client.messages.create(
+                model="claude-opus-4-5",
+                max_tokens=600,
+                messages=[{"role": "user", "content": content}]
+            )
+            texto = response.content[0].text.strip().replace("```json","").replace("```","").strip()
+            return json.loads(texto)
+        except Exception as e:
+            if "overloaded" in str(e).lower() and intento < 2:
+                time.sleep(3)
+                continue
+            raise e
 
 # ── Botón analizar ────────────────────────────────────────────────────────────
 if st.button("🤖 Analizar fotos con IA", use_container_width=True):
