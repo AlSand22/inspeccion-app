@@ -102,6 +102,25 @@ if fotos:
         with cols[i % 4]:
             st.image(f, caption=f"{'🌐 Panorámica' if i==0 else f'🔍 Detalle {i}'}", use_container_width=True)
 
+# ── Compresión automática de imágenes ────────────────────────────────────────
+def comprimir_imagen(file_bytes, max_bytes=4_000_000):
+    from PIL import Image
+    import io
+    img = Image.open(io.BytesIO(file_bytes))
+    if img.mode in ("RGBA", "P"):
+        img = img.convert("RGB")
+    if max(img.size) > 1920:
+        img.thumbnail((1920, 1920), Image.LANCZOS)
+    quality = 85
+    while quality >= 30:
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=quality)
+        if buf.tell() <= max_bytes:
+            break
+        quality -= 10
+    buf.seek(0)
+    return buf.read()
+
 # ── Función análisis con Claude ───────────────────────────────────────────────
 def analizar_con_claude(fotos_list, ambiente, elemento, api_key):
     client = anthropic.Anthropic(api_key=api_key)
@@ -109,12 +128,12 @@ def analizar_con_claude(fotos_list, ambiente, elemento, api_key):
     content = []
     for i, f in enumerate(fotos_list):
         f.seek(0)
-        img_b64 = base64.standard_b64encode(f.read()).decode("utf-8")
-        ext = f.name.split(".")[-1].lower()
-        media_type = "image/jpeg" if ext in ["jpg","jpeg"] else "image/png"
+        raw = f.read()
+        img_bytes = comprimir_imagen(raw)
+        img_b64 = base64.standard_b64encode(img_bytes).decode("utf-8")
         tipo = "panorámica (contexto general del ambiente)" if i == 0 else f"detalle #{i} (acercamiento al defecto)"
         content.append({"type": "text", "text": f"Fotografía {i+1} — {tipo}:"})
-        content.append({"type": "image", "source": {"type": "base64", "media_type": media_type, "data": img_b64}})
+        content.append({"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": img_b64}})
 
     content.append({"type": "text", "text": f"""
 Eres un inspector técnico de inmuebles profesional en Perú. Analiza las fotografías anteriores.
